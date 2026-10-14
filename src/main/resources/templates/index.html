@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlquilaYa S.A. - Gestión de Flota</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">🚗 AlquilaYa S.A.</a>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalCliente">+ Nuevo Cliente</button>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalVehiculo">+ Nuevo Vehículo</button>
+        </div>
+    </div>
+</nav>
+
+<div class="container my-5">
+    <div class="row text-center mb-4">
+        <h2 class="fw-bold">Panel de Control de Alquiler de Vehículos</h2>
+        <p class="text-muted">Inventario disponible en tiempo real y contratos activos</p>
+    </div>
+
+    <!-- TABLA 1: VEHÍCULOS -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Flota de Vehículos</h5>
+            <button class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalVehiculo">+ Registrar Auto</button>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Marca</th>
+                        <th>Modelo</th>
+                        <th>Año</th>
+                        <th>Matrícula</th>
+                        <th>Tarifa Diaria</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="vehiculo : ${vehiculos}">
+                        <td th:text="${vehiculo.idVehiculo}">1</td>
+                        <td th:text="${vehiculo.marca}">Toyota</td>
+                        <td th:text="${vehiculo.modelo}">Corolla</td>
+                        <td th:text="${vehiculo.anio}">2023</td>
+                        <td th:text="${vehiculo.matricula}">ABC-1234</td>
+                        <td th:text="'$' + ${vehiculo.tarifaDiaria} + ' MXN'">$650.00</td>
+                        <td>
+                            <span class="badge" 
+                                  th:classappend="${vehiculo.estado == 'DISPONIBLE'} ? 'bg-success' : (${vehiculo.estado == 'ALQUILADO'} ? 'bg-warning text-dark' : 'bg-secondary')"
+                                  th:text="${vehiculo.estado}">DISPONIBLE</span>
+                        </td>
+                        <td>
+                            <!-- Si está disponible -->
+                            <div th:if="${vehiculo.estado == 'DISPONIBLE'}" class="btn-group btn-group-sm">
+                                <button class="btn btn-success"
+                                        th:data-id="${vehiculo.idVehiculo}"
+                                        th:data-nombre="${vehiculo.marca + ' ' + vehiculo.modelo}"
+                                        th:data-tarifa="${vehiculo.tarifaDiaria}"
+                                        onclick="abrirModalDesdeBoton(this)">
+                                    🔑 Alquilar
+                                </button>
+                                <button class="btn btn-outline-secondary"
+                                        th:data-id="${vehiculo.idVehiculo}"
+                                        onclick="cambiarEstadoVehiculo(this.getAttribute('data-id'), 'MANTENIMIENTO')">
+                                    🔧 Mantenimiento
+                                </button>
+                            </div>
+
+                            <!-- Si está en mantenimiento -->
+                            <button th:if="${vehiculo.estado == 'MANTENIMIENTO'}" 
+                                    class="btn btn-sm btn-outline-success"
+                                    th:data-id="${vehiculo.idVehiculo}"
+                                    onclick="cambiarEstadoVehiculo(this.getAttribute('data-id'), 'DISPONIBLE')">
+                                ✅ Finalizar Taller (Habilitar)
+                            </button>
+
+                            <!-- Si está alquilado -->
+                            <span th:if="${vehiculo.estado == 'ALQUILADO'}" class="text-muted small">En contrato activo</span>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(vehiculos)}">
+                        <td colspan="8" class="text-center text-muted">No hay vehículos registrados. Haz clic en "+ Registrar Auto".</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TABLA 2: ALQUILERES -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Historial de Alquileres Activos</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Vehículo</th>
+                        <th>Cliente</th>
+                        <th>Inicio</th>
+                        <th>Devolución</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="alquiler : ${alquileres}">
+                        <td th:text="${alquiler.idAlquiler}">1</td>
+                        <td th:text="${alquiler.vehiculo?.marca + ' ' + alquiler.vehiculo?.modelo}">Toyota Corolla</td>
+                        <td th:text="${alquiler.cliente?.firstName + ' ' + alquiler.cliente?.lastName}">Juan Pérez</td>
+                        <td th:text="${alquiler.fechaAlquiler}">2026-10-15</td>
+                        <td th:text="${alquiler.fechaDevolucion}">2026-10-20</td>
+                        <td class="fw-bold text-success" th:text="'$' + ${alquiler.precioTotal} + ' MXN'">$3250.00</td>
+                        <td>
+                            <span class="badge" 
+                                  th:classappend="${alquiler.estado == 'ACTIVO'} ? 'bg-primary' : 'bg-secondary'"
+                                  th:text="${alquiler.estado}">ACTIVO</span>
+                        </td>
+                        <td>
+                            <button th:if="${alquiler.estado == 'ACTIVO'}" 
+                                    class="btn btn-sm btn-outline-danger"
+                                    th:data-id="${alquiler.idAlquiler}"
+                                    onclick="devolverAuto(this.getAttribute('data-id'))">
+                                Finalizar Contrato
+                            </button>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(alquileres)}">
+                        <td colspan="8" class="text-center text-muted">No hay alquileres registrados actualmente.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 1: REGISTRAR VEHÍCULO -->
+<div class="modal fade" id="modalVehiculo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Registrar Nuevo Vehículo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formVehiculo">
+                    <div class="mb-3">
+                        <label class="form-label">Marca</label>
+                        <input type="text" id="vMarca" class="form-control" required placeholder="Ej. Toyota, Nissan">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Modelo</label>
+                        <input type="text" id="vModelo" class="form-control" required placeholder="Ej. Corolla, Sentra">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Año</label>
+                            <input type="number" id="vAnio" class="form-control" required value="2023">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Matrícula / Placa</label>
+                            <input type="text" id="vMatricula" class="form-control" required placeholder="ABC-1234">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tarifa Diaria (MXN)</label>
+                        <input type="number" step="0.01" id="vTarifa" class="form-control" required placeholder="Ej. 650.00">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Guardar Vehículo</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 2: REGISTRAR CLIENTE -->
+<div class="modal fade" id="modalCliente" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Registrar Nuevo Cliente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCliente">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" id="cNombre" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Apellidos</label>
+                            <input type="text" id="cApellido" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Correo Electrónico</label>
+                        <input type="email" id="cEmail" class="form-control" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Licencia de Conducir</label>
+                            <input type="text" id="cLicencia" class="form-control" required placeholder="LIC-12345">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" id="cTelefono" class="form-control" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-dark w-100">Guardar Cliente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 3: RENTAR VEHÍCULO -->
+<div class="modal fade" id="modalRenta" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Rentar Vehículo: <span id="nombreAutoRenta"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formRenta">
+                    <input type="hidden" id="rVehiculoId">
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar Cliente</label>
+                        <select id="rClienteId" class="form-select" required>
+                            <option value="">-- Elige un cliente --</option>
+                            <option th:each="c : ${clientes}" 
+                                    th:value="${c.idCliente}" 
+                                    th:text="${c.firstName + ' ' + c.lastName + ' (' + c.driversLicense + ')'}">
+                            </option>
+                        </select>
+                        <div class="form-text">¿No está en la lista? Registra primero al cliente con el botón superior.</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha de Inicio</label>
+                            <input type="date" id="rFechaInicio" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha de Devolución</label>
+                            <input type="date" id="rFechaFin" class="form-control" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Confirmar Alquiler</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // 1. Guardar Vehículo
+    document.getElementById('formVehiculo').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            marca: document.getElementById('vMarca').value,
+            modelo: document.getElementById('vModelo').value,
+            anio: parseInt(document.getElementById('vAnio').value),
+            matricula: document.getElementById('vMatricula').value,
+            tarifaDiaria: parseFloat(document.getElementById('vTarifa').value),
+            estado: 'DISPONIBLE'
+        };
+
+        const res = await fetch('/api/vehiculos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            window.location.reload();
+        } else {
+            alert('Error al registrar el vehículo');
+        }
+    });
+
+    // 2. Guardar Cliente
+    document.getElementById('formCliente').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            firstName: document.getElementById('cNombre').value,
+            lastName: document.getElementById('cApellido').value,
+            email: document.getElementById('cEmail').value,
+            driversLicense: document.getElementById('cLicencia').value,
+            phone: document.getElementById('cTelefono').value
+        };
+
+        const res = await fetch('/api/clientes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            alert('Cliente registrado con éxito');
+            window.location.reload();
+        } else {
+            alert('Error al registrar cliente');
+        }
+    });
+
+    // 3. Abrir Modal de Renta
+    function abrirModalDesdeBoton(btn) {
+        const id = btn.getAttribute('data-id');
+        const nombre = btn.getAttribute('data-nombre');
+        
+        document.getElementById('rVehiculoId').value = id;
+        document.getElementById('nombreAutoRenta').innerText = nombre;
+        
+        const hoy = new Date().toISOString().split('T')[0];
+        document.getElementById('rFechaInicio').value = hoy;
+        
+        const modal = new bootstrap.Modal(document.getElementById('modalRenta'));
+        modal.show();
+    }
+
+    // 4. Confirmar Alquiler
+    document.getElementById('formRenta').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const vId = document.getElementById('rVehiculoId').value;
+        const cId = document.getElementById('rClienteId').value;
+        const fInicio = document.getElementById('rFechaInicio').value;
+        const fFin = document.getElementById('rFechaFin').value;
+
+        if (!cId) {
+            alert('Por favor selecciona un cliente');
+            return;
+        }
+
+        const data = {
+            vehiculo: { idVehiculo: parseInt(vId) },
+            cliente: { idCliente: parseInt(cId) },
+            fechaAlquiler: fInicio,
+            fechaDevolucion: fFin,
+            estado: 'ACTIVO'
+        };
+
+        const res = await fetch('/api/alquileres', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            window.location.reload();
+        } else {
+            alert('Error al procesar el alquiler');
+        }
+    });
+
+    // 5. Finalizar Alquiler
+    async function devolverAuto(idAlquiler) {
+        if (!confirm('¿Deseas finalizar este contrato y devolver el auto?')) return;
+
+        const hoy = new Date().toISOString().split('T')[0];
+        const data = {
+            fechaDevolucion: hoy,
+            estado: 'COMPLETADO'
+        };
+
+        const res = await fetch('/api/alquileres/' + idAlquiler, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            window.location.reload();
+        } else {
+            alert('Error al devolver el auto');
+        }
+    }
+
+    // 6. Cambiar a Mantenimiento o Habilitar
+    async function cambiarEstadoVehiculo(idVehiculo, nuevoEstado) {
+        const res = await fetch('/api/vehiculos/' + idVehiculo + '/estado/' + nuevoEstado, {
+            method: 'PUT'
+        });
+
+        if (res.ok) {
+            window.location.reload();
+        } else {
+            alert('Error al actualizar el estado del vehículo');
+        }
+    }
+</script>
+</body>
+</html>
